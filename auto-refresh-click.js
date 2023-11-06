@@ -13,23 +13,18 @@ const puppeteer = require('puppeteer');
   const pages = await browser.pages();
   const page = pages[0]
 
-  // Set the viewport to full-screen size
-  // await page.setViewport({
-  //   width: 1920, // Replace with your desired width
-  //   height: 1080, // Replace with your desired height
-  // });
-
   // Navigate to the website
-  await page.goto('https://www.jumia.co.ke/');
+  await page.goto('https://platform.verbit.co/');
 
+  const username = await page.waitForSelector('form > div.sc-bkkeKt.hlZVeT > div.sc-jrQzAO.cCmSqm > input');
+  await username.type('johnsonterry16541@gmail.com');
+  const next = await page.waitForSelector('form > button');
+  await next.click();
+ 
   // Auto-refresh the page every 3 seconds (adjust the time interval as needed)
-  setInterval(async () => {
-    await page.reload();
-  }, 3000);
-
-  // Auto-click a button (replace with your specific HTML element selector)
-  // await page.waitForSelector('#your-button-selector');
-  // await page.click('#your-button-selector');
+  // setInterval(async () => {
+  //   await page.reload();
+  // }, 3000);
 
   // Close the browser after some time (adjust the time interval as needed)
 //   setTimeout(async () => {
