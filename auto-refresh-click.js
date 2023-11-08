@@ -17,17 +17,34 @@ const puppeteer = require('puppeteer');
   await page.goto('https://platform.verbit.co/');
 
   const username = await page.waitForSelector('form > div.sc-bkkeKt.hlZVeT > div.sc-jrQzAO.cCmSqm > input');
-  await username.type('johnsonterry16541@gmail.com');
+  await username.type('johnsonterry16541@gmail.com'); //Nestanie123@
   const next = await page.waitForSelector('form > button');
   await next.click();
- 
-  // Auto-refresh the page every 3 seconds (adjust the time interval as needed)
-  // setInterval(async () => {
-  //   await page.reload();
-  // }, 3000);
 
-  // Close the browser after some time (adjust the time interval as needed)
-//   setTimeout(async () => {
-//     await browser.close();
-//   }, 43200000); // Close the browser after 12 hours
+ // wait for loading to finish 
+  await page.setDefaultNavigationTimeout(0);
+  await page.waitForNavigation({ waitUntil: 'load' });
+  if (page.url() === 'https://platform.verbit.co/'){
+    console.log("successfull")
+
+    // const requestLimit = await page.waitForSelector('div > div.request-limit_title');
+
+    if(page.url() === 'https://platform.verbit.co/request_limit.html'){
+      setInterval(async () => {
+        await page.reload();
+      }, 120000);
+    }else if (page.url() === 'https://platform.verbit.co/'){
+      setInterval(async () => {
+        await page.reload();
+      }, 4000);
+    }
+  }
+  else{
+    console.log('failed to login')
+  }
+
+  //Close the browser after some time (adjust the time interval as needed)
+  setTimeout(async () => {
+    await browser.close();
+  }, 43200000); // Close the browser after 12 hours
 })();
