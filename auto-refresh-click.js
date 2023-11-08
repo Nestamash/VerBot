@@ -1,5 +1,14 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
 
+// add stealth plugin and use defaults (all evasion techniques)
+const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+puppeteer.use(StealthPlugin());
+
+// Add adblocker plugin to block all ads and trackers (saves bandwidth)
+const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
+puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
+
+// normal Puppeteer usage
 (async () => {
   const browser = await puppeteer.launch(
     {
@@ -9,6 +18,7 @@ const puppeteer = require('puppeteer');
         args: ['--start-maximized'] // you can also use '--start-fullscreen'
         // executablePath: '/path/to/chrome-binary', // Replace with the path to your specific Chrome binary
     });
+
   // const page = await browser.newPage();
   const pages = await browser.pages();
   const page = pages[0]
@@ -24,24 +34,22 @@ const puppeteer = require('puppeteer');
  // wait for loading to finish 
   await page.setDefaultNavigationTimeout(0);
   await page.waitForNavigation({ waitUntil: 'load' });
-  if (page.url() === 'https://platform.verbit.co/'){
-    console.log("successfull")
+  
+    // const requestLimit = await page.waitForSelector('div.request-limit.col-md-6.col-md-offset-3 > div > div.request-limit__title');
 
-    // const requestLimit = await page.waitForSelector('div > div.request-limit_title');
-
-    if(page.url() === 'https://platform.verbit.co/request_limit.html'){
+    if(page.url() === 'https://platform.verbit.co/'){
+      console.log("successfull:" ,page.url())
       setInterval(async () => {
+        await page.reload();
+      }, 2000);
+
+    }else {
+      console.log("failed-limit:" ,page.url())
+    setInterval(async () => {
         await page.reload();
       }, 120000);
-    }else if (page.url() === 'https://platform.verbit.co/'){
-      setInterval(async () => {
-        await page.reload();
-      }, 4000);
     }
-  }
-  else{
-    console.log('failed to login')
-  }
+  
 
   //Close the browser after some time (adjust the time interval as needed)
   setTimeout(async () => {
