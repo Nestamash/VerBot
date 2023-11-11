@@ -35,22 +35,29 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
   await page.setDefaultNavigationTimeout(0);
   await page.waitForNavigation({ waitUntil: 'load' });
   
-    // const requestLimit = await page.waitForSelector('div.request-limit.col-md-6.col-md-offset-3 > div > div.request-limit__title');
+    // const requestLimit = await page.waitForSelector('div.request-limit.col-md-6.col-md-offset-3 > div > div.request-limit__title');  
+    let firstInterval;
 
-    if(page.url() === 'https://platform.verbit.co/'){
-      console.log("successfull:" ,page.url())
-      setInterval(async () => {
+    async function reload() {
+      const currentUrl = await page.url();
+    
+      if (currentUrl === 'https://platform.verbit.co/') {
+        console.log("Successfully reloaded:", currentUrl);
         await page.reload();
-      }, 2000);
+      } else {
+        clearInterval(firstInterval);
+        console.log("Reloading in 2 minutes...");
+        await page.waitForTimeout(120000);
 
-    }else {
-      console.log("failed-limit:" ,page.url())
-    setInterval(async () => {
-        await page.reload();
-      }, 120000);
+        const verbitLogo = await page.waitForSelector('header > div.logo > a > img');
+        await verbitLogo.click();
+    
+        firstInterval = setInterval(reload, 2000);
+      }
     }
+    
+    firstInterval = setInterval(reload, 2000);
   
-
   //Close the browser after some time (adjust the time interval as needed)
   setTimeout(async () => {
     await browser.close();
