@@ -20,9 +20,11 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
         // executablePath: '/Users/Marsha/Desktop/GoogleChromePortable/GoogleChromePortable.exe',  // Replace with the path to your specific Chrome binary
     });
 
-  // const page = await browser.newPage();
-  const pages = await browser.pages();
-  const page = pages[0]
+  const page = await browser.newPage();
+    const pages = await browser.pages();
+    if (pages.length > 1) {
+        await pages[0].close();
+    }
 
   // Navigate to the website
   await page.goto('https://platform.verbit.co/');
@@ -45,8 +47,15 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
       if (currentUrl === 'https://platform.verbit.co/') {
         console.log("Successfully reloaded:", currentUrl);
         await page.reload();
-        const taskId = await page.waitForSelector('');
-        await taskId.click();
+
+         // Replace 'your-class-name' with the actual class name of the elements you want to click
+          const transcriptionTasks = await page.$$('.action-edit');
+
+          for (const taskId of transcriptionTasks) {
+            await taskId.click();
+            // Add any additional actions or waiting as needed
+          }
+        
       } else {
         clearInterval(firstInterval);
         console.log("Reloading in 2 minutes...");
@@ -55,11 +64,11 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
         const verbitLogo = await page.waitForSelector('header > div.logo > a > img');
         await verbitLogo.click();
     
-        firstInterval = setInterval(reload, 2000);
+        firstInterval = setInterval(reload, 4000);
       }
     }
     
-    firstInterval = setInterval(reload, 2000);
+    firstInterval = setInterval(reload, 4000);
   
   //Close the browser after some time (adjust the time interval as needed)
   setTimeout(async () => {
