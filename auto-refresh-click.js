@@ -49,7 +49,7 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
         await page.reload();
 
          // Replace 'your-class-name' with the actual class name of the elements you want to click
-          const transcriptionTasks = await page.$$('.action-edit');
+          const transcriptionTasks = await page.$$('#transcription_jobs_table > .action-edit');
 
           for (const taskId of transcriptionTasks) {
             await taskId.click();
