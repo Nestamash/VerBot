@@ -1,5 +1,4 @@
 const puppeteer = require('puppeteer-extra');
-
 // add stealth plugin and use defaults (all evasion techniques)
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 puppeteer.use(StealthPlugin());
@@ -15,8 +14,10 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
         headless: false,
         defaultViewport: null,
         ignoreDefaultArgs: ['--enable-automation'], // remove the infobars
-        args: ['--start-maximized'] // you can also use '--start-fullscreen'
-        // executablePath: '/path/to/chrome-binary', // Replace with the path to your specific Chrome binary
+        args: ['--start-maximized'], // you can also use '--start-fullscreen'
+        executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+      
+        // executablePath: '/Users/Marsha/Desktop/GoogleChromePortable/GoogleChromePortable.exe',  // Replace with the path to your specific Chrome binary
     });
 
   // const page = await browser.newPage();
@@ -44,6 +45,8 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
       if (currentUrl === 'https://platform.verbit.co/') {
         console.log("Successfully reloaded:", currentUrl);
         await page.reload();
+        const taskId = await page.waitForSelector('');
+        await taskId.click();
       } else {
         clearInterval(firstInterval);
         console.log("Reloading in 2 minutes...");
