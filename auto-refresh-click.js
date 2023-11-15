@@ -91,31 +91,23 @@ console.log('After waiting for selector');
 // Get all matching elements
 const transcriptionTasks = await page.$x(xpathSelector);
 
-// Create a Set to keep track of clicked elements
-const clickedElements = new Set();
-
 for (const taskId of transcriptionTasks) {
-    // Get the XPath of the current element
-    const elementXPath = await page.evaluate(el => {
-        const { xpath } = el;
-        return xpath;
-    }, taskId);
+  // Check if the element has the data-clicked attribute
+  const isClicked = await taskId.evaluate(el => el.getAttribute('data-clicked'));
 
-    // Check if the element has already been clicked
-    if (!clickedElements.has(elementXPath)) {
-        // Click on the element
-        await taskId.click({ button: 'middle' });
+  if (!isClicked) {
+      // Click on the element
+      await taskId.click({ button: 'middle' });
 
-        // Add the XPath to the set to mark it as clicked
-        clickedElements.add(elementXPath);
+      // Mark the element as clicked by adding the data-clicked attribute
+      await taskId.evaluate(el => el.setAttribute('data-clicked', 'true'));
 
-        // Perform additional actions if needed (e.g., opening a new page)
-        const newPage = await getNewBrowserTab(browser);
-        await newPage.bringToFront();
-        await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+      // Perform additional actions if needed (e.g., opening a new page)
+      const newPage = await getNewBrowserTab(browser);
+      await newPage.bringToFront();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+  }
 }
-
         
       } else {
         clearInterval(firstInterval);
