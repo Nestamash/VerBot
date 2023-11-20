@@ -62,6 +62,8 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
   let firstInterval;
 
+  const clickedElements = [];
+
   async function reload() {
     const currentUrl = await page.url();
   
@@ -69,9 +71,9 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
       console.log("Successfully reloaded:", currentUrl);
       await page.reload({ waitUntil: 'domcontentloaded' });
   
-      // ensure that the navigation is complete before attempting to interact with the element.
+      // Ensure that the navigation is complete before attempting to interact with the element.
       await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
-      const xpathSelector = '//div/span[@class="filename css_ellipsis-part2"]';
+      const selector = 'td.column-status.text-left.col-sm-4.font-grey-mint.status.status-ready > a';
   
       // Retry mechanism for waiting for the elements
       const maxRetries = 5;
@@ -80,17 +82,17 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
   
       while (retries < maxRetries) {
         try {
-          // Wait for XPath
-          await page.waitForXPath(xpathSelector, { timeout: 120000 });
+          // Wait for the selector
+          await page.waitForSelector(selector);
   
           // Get all matching elements
-          transcriptionTasks = await page.$x(xpathSelector);
+          transcriptionTasks = await page.$$(selector);
   
           if (transcriptionTasks && transcriptionTasks.length > 0) {
             break; // Break the loop if elements are found
           }
         } catch (error) {
-          console.error(`Error while waiting for XPath: ${error}`);
+          // console.error(`Error waiting for selector: ${error}`);
         }
   
         retries++;
@@ -98,32 +100,50 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
       }
   
       if (!transcriptionTasks || transcriptionTasks.length === 0) {
-        console.error('Failed to find elements after maximum retries or transcriptionTasks is undefined.');
+        // console.error('Failed to find elements after maximum retries or transcriptionTasks is undefined.');
         return;
       }
   
-      for (const taskId of transcriptionTasks) {
-        // Check if the element has the data-clicked attribute
-        const isClicked = await taskId.evaluate(el => el.getAttribute('data-clicked'));
+      for (let i = 0; i < transcriptionTasks.length; i++) {
+        const taskId = transcriptionTasks[i];
   
-        if (!isClicked) {
-          // Click on the element
-          await taskId.click({ button: 'middle' });
+        try {
+          // Check if the element is still attached
+          await taskId.evaluate(el => {
+            if (!el || !el.isConnected) {
+              throw new Error('Element is detached');
+            }
+          });
   
-          // Mark the element as clicked by adding the data-clicked attribute
-          await taskId.evaluate(el => el.setAttribute('data-clicked', 'true'));
+          // Check if the element has been clicked
+          const href = await taskId.evaluate(el => el.getAttribute('href'));
+          
+          console.log('clicked element href:: ', clickedElements);
+          
+          if (!clickedElements.includes(href)) {
+            // Now 'href' contains the value of the 'href' attribute of the clicked element
+            console.log('Clicked element href:', href);
   
-          // Wait for navigation to complete
-          await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+            // Click on the task.
+            await taskId.click({ button: 'middle' });
   
-          // Perform additional actions if needed (e.g., opening a new page)
-          const newPage = await getNewBrowserTab(browser);
-          await newPage.bringToFront();
+            // Add the href to the array to mark it as clicked
+            clickedElements.push(href);
   
-          // Wait for the new page to load (adjust the waiting time as needed)
-          await newPage.waitForNavigation({ waitUntil: 'domcontentloaded' });
+            // Wait for navigation to complete
+            await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
   
-          await new Promise(resolve => setTimeout(resolve, 1000));
+            // Perform additional actions if needed (e.g., opening a new page)
+            const newPage = await getNewBrowserTab(browser);
+            await newPage.bringToFront();
+  
+            // Wait for the new page to load (adjust the waiting time as needed)
+            await newPage.waitForNavigation({ waitUntil: 'domcontentloaded' });
+  
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } catch (error) {
+          // console.error(`Error interacting with element: ${error}`);
         }
       }
     } else {
@@ -138,8 +158,13 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
     }
   }
   
-  firstInterval = setInterval(reload, 4000);
+  // Initialize the interval with the first call
+ firstInterval = setInterval(reload, 4000);
+  
 
+  
+ 
+  
   // Close the browser after some time (adjust the time interval as needed)
   setTimeout(async () => {
     await browser.close();
