@@ -1,9 +1,11 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 const AdblockerPlugin = require('puppeteer-extra-plugin-adblocker')
-
+const fs = require('fs').promises;
 puppeteer.use(StealthPlugin());
 puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
+
+const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
 
 (async () => {
   const browser = await puppeteer.launch({
@@ -19,6 +21,18 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
   if (pages.length > 1) {
     await pages[0].close();
   }
+
+  async function clearClickedElements() {
+    try {
+      await fs.writeFile(FILE_PATH, '[]', 'utf8');
+      console.log('clickedElements.json cleared successfully.');
+    } catch (error) {
+      console.error('Error clearing clickedElements.json:', error.message);
+    }
+  }
+
+  // Uncomment the following line if you want to clear the file before starting the script
+      //  await clearClickedElements();
 
   // Navigate to the website
   await page.goto('https://platform.verbit.co/');
@@ -62,9 +76,18 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
   let firstInterval;
 
-  const clickedElements = [];
+  let clickedElements = [];
 
   async function reload() {
+    console.log('Reload function called');
+    // Load clicked elements from file or initialize an empty array
+    
+    try {
+      const data = await fs.readFile(FILE_PATH, 'utf8');
+      clickedElements = JSON.parse(data);
+    } catch (error) {
+      console.error('Error reading clicked elements from file:', error.message);
+    }
     const currentUrl = await page.url();
   
     if (currentUrl === 'https://platform.verbit.co/') {
@@ -104,8 +127,7 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
         return;
       }
   
-      for (let i = 0; i < transcriptionTasks.length; i++) {
-        const taskId = transcriptionTasks[i];
+      for (const taskId of transcriptionTasks){
   
         try {
           // Check if the element is still attached
@@ -116,19 +138,28 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
           });
   
           // Check if the element has been clicked
-          const href = await taskId.evaluate(el => el.getAttribute('href'));
-          
-          console.log('clicked element href:: ', clickedElements);
+          const hr = await taskId.evaluate(el => el.getAttribute('href'));
+          const href = new URL(hr, page.url()).hr.trim();
+         
+          console.log('clicked element BEFORE:: ', clickedElements);
           
           if (!clickedElements.includes(href)) {
             // Now 'href' contains the value of the 'href' attribute of the clicked element
             console.log('Clicked element href:', href);
   
             // Click on the task.
-            await taskId.click({ button: 'middle' });
+            await Promise.all([
+              taskId.click({ button: 'middle' }),
+              page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+              // Add any other promises you need to wait for here
+          ]);
   
             // Add the href to the array to mark it as clicked
             clickedElements.push(href);
+
+           // Save clicked elements to the file
+          await fs.writeFile(FILE_PATH, JSON.stringify(clickedElements, null, 2), 'utf8');
+
   
             // Wait for navigation to complete
             await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
