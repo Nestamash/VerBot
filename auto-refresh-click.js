@@ -38,7 +38,7 @@ const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
   await page.goto('https://platform.verbit.co/');
 
   const username = await page.waitForSelector('form > div.sc-bkkeKt.hlZVeT > div.sc-jrQzAO.cCmSqm > input');
-  await username.type('janellporter.125@gmail.com');
+  await username.type('Zacserle4@gmail.com');
   const next = await page.waitForSelector('form > button');
   await next.click();
 
@@ -126,8 +126,10 @@ const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
         // console.error('Failed to find elements after maximum retries or transcriptionTasks is undefined.');
         return;
       }
-  
-      for (const taskId of transcriptionTasks){
+
+      console.log('Number of jobs found: ', transcriptionTasks.length)
+      
+     for (const taskId of transcriptionTasks){
   
         try {
           // Check if the element is still attached
@@ -138,9 +140,8 @@ const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
           });
   
           // Check if the element has been clicked
-          const hr = await taskId.evaluate(el => el.getAttribute('href'));
-          const href = new URL(hr, page.url()).hr.trim();
-         
+          const href = await taskId.evaluate(el => el.getAttribute('href'));
+           
           console.log('clicked element BEFORE:: ', clickedElements);
           
           if (!clickedElements.includes(href)) {
@@ -155,12 +156,11 @@ const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
           ]);
   
             // Add the href to the array to mark it as clicked
-            clickedElements.push(href);
+            clickedElements.push(href);    
 
            // Save clicked elements to the file
           await fs.writeFile(FILE_PATH, JSON.stringify(clickedElements, null, 2), 'utf8');
-
-  
+          
             // Wait for navigation to complete
             await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
   
@@ -185,12 +185,12 @@ const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
       const verbitLogo = await page.waitForSelector('header > div.logo > a > img');
       await verbitLogo.click();
   
-      firstInterval = setInterval(reload, 4000);
+      firstInterval = setInterval(reload, 6000);
     }
   }
   
   // Initialize the interval with the first call
- firstInterval = setInterval(reload, 4000);
+ firstInterval = setInterval(reload, 6000);
   
 
   
