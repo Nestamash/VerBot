@@ -8,6 +8,8 @@ puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
 const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
 const verbitEmail = 'Zacserle4@gmail.com';
+let clickedElements = new Set();
+let firstInterval;
 
 (async () => {
     const browser = await puppeteer.launch({
@@ -36,7 +38,7 @@ const verbitEmail = 'Zacserle4@gmail.com';
     }
 
     // Uncomment the following line if you want to clear the file before starting the script
-    await clearClickedElements();
+    // await clearClickedElements();
 
     // Navigate to the website
     await page.goto('https://platform.verbit.co/');
@@ -59,11 +61,12 @@ const verbitEmail = 'Zacserle4@gmail.com';
         }
     }
 
-    let firstInterval;
     let fileHandle; // Declare fileHandle outside the try-catch block
-
+    let isLogoClicked = false;
     async function reload() {
-        console.log('Reload function called');
+        console.log('Reload function called'
+        
+        );
 
         try {
             fileHandle = await fs.open(FILE_PATH, 'r');
@@ -73,7 +76,9 @@ const verbitEmail = 'Zacserle4@gmail.com';
             console.error('Error reading clicked elements from file:', error.message);
         } finally {
             if (fileHandle) {
-                await fileHandle.close();
+                fileHandle.close()
+                .then(() => console.log('File handle closed successfully'))
+                .catch(error => console.error('Error closing file handle:', error.message));
             }
         }
 
@@ -105,26 +110,25 @@ const verbitEmail = 'Zacserle4@gmail.com';
                         console.log('Performing actions for selector1...');
 
                         // Get all matching elements
-                        const transcriptionTasks = await page.$$(selector1);
+                        const taskElements = await page.$$(selector1);
 
-                        console.log('Number of jobs found: ', transcriptionTasks.length);
-
-                        for (const taskId of transcriptionTasks) {
+                        // Execute click on them concurrently
+                        await Promise.all(taskElements.map(async (taskId) => {
                             try {
                                 // Check if the element is still attached
-                                await taskId.evaluate(el => {
-                                    if (!el || !el.isConnected) {
-                                        throw new Error('Element is detached');
-                                    }
-                                });
+                                const isElementAttached = await taskId.evaluate(el => el && el.isConnected);
+
+                                if (!isElementAttached) {
+                                    throw new Error('Element is detached');
+                                }
 
                                 const href = await taskId.evaluate(el => el.getAttribute('href'));
 
-                                console.log('clickedElements BEFORE:: ', [...clickedElements]);
+                                // console.log('clickedElements BEFORE:: ', [...clickedElements]);
 
                                 // Check if the element has been clicked
                                 if (!clickedElements.has(href)) {
-                                    console.log('Trying to click href:', href);
+                                    // console.log('Trying to click href:', href);
 
                                     // Add the href to the Set to mark it as clicked
                                     clickedElements.add(href);
@@ -133,17 +137,17 @@ const verbitEmail = 'Zacserle4@gmail.com';
                                     await taskId.click({ button: 'middle' });
 
                                     // Wait for the click to potentially open a new tab
-                                    await page.waitForTimeout(200); // Adjust this timeout if needed
+                                    // await page.waitForTimeout(200); // Adjust this timeout if needed
 
-                                    console.log('clickedElements AFTER:: ', [...clickedElements]);
+                                    // console.log('clickedElements AFTER:: ', [...clickedElements]);
 
                                     // Save clicked elements to the file
                                     await fs.writeFile(FILE_PATH, JSON.stringify([...clickedElements], null, 2), 'utf8');
                                 } else {
-                                    console.log('Already clicked href:', href);
+                                    // console.log('Already clicked href:', href);
                                 }
                             } catch (error) {
-                                console.error(`Error:: ${error.message}`);
+                                console.error(`Error interacting with element: ${error.message}`);
                                 // Handle the error as needed, e.g., log it or take corrective action
                                 if (error.message.includes('Execution context was destroyed')) {
                                     console.log('Execution context was destroyed, calling reload again...');
@@ -153,7 +157,7 @@ const verbitEmail = 'Zacserle4@gmail.com';
                                     console.error(`Error interacting with element: ${error}`);
                                 }
                             }
-                        }
+                        }));
 
                         // Continue with other actions (if any) after the loop
                         firstInterval = setInterval(reload, 3000);
@@ -163,19 +167,24 @@ const verbitEmail = 'Zacserle4@gmail.com';
                     }
                 } else {
                     console.error('Neither selector found within the specified timeout.');
+                    clearInterval(firstInterval);
                 }
             } catch (error) {
                 console.error('Error during page reload:', error.message);
                 // Handle the ProtocolError here
                 if (error.name === 'ProtocolError' && error.message.includes('Page.reload timed out')) {
                     console.log('Page reload timed out. Retrying reload...');
-                    return reload(); // Retry the reload
+                    // return reload(); // Retry the reload
                 } else {
                     // Handle other errors accordingly
                     console.error('Unhandled error:', error);
+                    // Restart the interval to avoid continuous reloads in case of an error
+                    clearInterval(firstInterval);
+                     firstInterval = setInterval(reload, 3000);
                 }
             }
         } else {
+            const verbitLogo = await page.waitForSelector('header > div.logo > a > img');
             clearInterval(firstInterval);
             console.log("Reloading in 30 sec...");
             await page.waitForTimeout(30000);
@@ -183,26 +192,41 @@ const verbitEmail = 'Zacserle4@gmail.com';
             try {
                 // Check if the page is still open before interacting
                 if (!page.isClosed()) {
-                    const verbitLogo = await page.waitForSelector('header > div.logo > a > img');
-                    await verbitLogo.click();
+
+                    // Check if the element is already clicked
+                    // const isLogoClicked = await verbitLogo.evaluate(el => el.getAttribute('data-clicked') === 'true');
+
+                    if (!isLogoClicked) {
+                        // Click on the element only if it's not already clicked
+                        await verbitLogo.click();
+                        firstInterval = setInterval(reload, 3000);
+                        // Mark the element as clicked to avoid clicking it again
+                        await verbitLogo.evaluate(el => el.setAttribute('data-clicked', 'true'));
+                    } else {
+                        console.log('Verbit logo already clicked. Skipping...');
+                    }
+
+                    // await verbitLogo.click();
                 } else {
                     console.error('Page is closed. Exiting reload function.');
                     return;
                 }
-            } catch (error) {
-                console.error(`Error interacting with the selector: ${error}`);
-            }
 
-            firstInterval = setInterval(reload, 3000);
+            } catch (error) {
+                // console.error(`Error interacting with the selector: ${error}`);
+            }
         }
+
+        // firstInterval = setInterval(reload, 3000);
     }
 
-    // Initialize the interval with the first call
+    // Uncomment the following line to start the interval
     firstInterval = setInterval(reload, 3000);
 
-    // Close the browser after some time (adjust the time interval as needed)
-    setTimeout(async () => {
-        console.log('You have been using Marsha bot for 12 hours');
-        await browser.close();
-    }, 43200000); // Close the browser after 12 hours
 })();
+
+// Close the browser after some time (adjust the time interval as needed)
+setTimeout(async () => {
+    console.log('You have been using Marsha bot for 12 hours');
+    await browser.close();
+}, 43200000); // Close the browser after 12 hours
