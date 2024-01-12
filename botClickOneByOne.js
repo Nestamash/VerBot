@@ -61,18 +61,27 @@ let firstInterval;
     let fileHandle;
 
     async function reload() {
+        console.log('Reload function called');
         try {
-            console.log('Reload function called');
-
             fileHandle = await fs.open(FILE_PATH, 'r');
             const data = await fileHandle.readFile('utf8');
             clickedElements = new Set(JSON.parse(data));
+        } catch (error) {
+            console.error('Error reading clicked elements from file:', error.message);
+        } finally {
+            if (fileHandle) {
+                fileHandle.close()
+                    .then(() => console.log('File handle closed'))
+                    .catch(error => console.error('Error closing file handle:', error.message));
+            }
+        }
 
-            const currentUrl = await page.url();
+        const currentUrl = await page.url();
 
-            if (currentUrl === 'https://platform.verbit.co/') {
-                console.log("Successfully reloaded:", currentUrl);
+        if (currentUrl === 'https://platform.verbit.co/') {
+            console.log("Successfully reloaded:", currentUrl);
 
+            try {
                 await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
                 await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
 
@@ -104,11 +113,7 @@ let firstInterval;
                                 if (!clickedElements.has(href)) {
                                     clickedElements.add(href);
                                     await taskId.click({ button: 'middle' });
-
-                                    // Adding a check for element existence after clicking
-                                    // await page.waitForSelector(selector1, { timeout: 5000 });
-
-                                    // await page.waitForTimeout(5000);
+                                    await page.waitForTimeout(2000);
 
                                     await fs.writeFile(FILE_PATH, JSON.stringify([...clickedElements], null, 2), 'utf8');
                                 }
@@ -123,7 +128,8 @@ let firstInterval;
                             }
                         }));
 
-                        firstInterval = setInterval(reload, 4000);
+                        // Continue with other actions (if any) after the loop
+                        firstInterval = setInterval(reload, 3000);
 
                     } else if (foundSelector === selector2) {
                         console.log('Performing actions for selector2 (New jobs will be uploaded)...');
@@ -131,39 +137,35 @@ let firstInterval;
                 } else {
                     console.error('Neither selector found within the specified timeout.');
                 }
-            } else {
-                try {
-                    const verbitLogo = await page.waitForSelector('header > div.logo > a > img', { timeout: 30000 });
-                    clearInterval(firstInterval);
-                    console.log("Reloading in 30 sec...");
-                    await page.waitForTimeout(30000);
-                    verbitLogo.click();
-                    //  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-                    // await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
-
-                     firstInterval = setInterval(reload, 4000);
-                } catch (error) {
-                    if (error.name === 'TimeoutError' && error.message.includes('Waiting for selector')) {
-                        console.log('Timeout waiting for selector. Retrying reload...');
-                        return reload();
-                    } else {
-                        console.error(`Unexpected error: ${error.message}`);
-                    }
+            } catch (error) {
+                console.error('Error during page reload:', error.message);
+                if (error.name === 'ProtocolError' && error.message.includes('Page.reload timed out')) {
+                    console.log('Page reload timed out. Retrying reload...');
+                    return reload();
+                } else {
+                    console.error('Unhandled error:', error);
                 }
             }
-        } catch (error) {
-            console.error(`Unexpected error in reload: ${error.message}`);
-            // Handle the error as needed
-        } finally {
-            if (fileHandle) {
-                fileHandle.close()
-                    .then(() => console.log('File handle closed'))
-                    .catch(error => console.error('Error closing file handle:', error.message));
+        } else {
+            try {
+                const verbitLogo = await page.waitForSelector('header > div.logo > a > img', { timeout: 30000 });
+                clearInterval(firstInterval);
+                console.log("Reloading in 30 sec...");
+                await page.waitForTimeout(30000);
+                verbitLogo.click();
+                firstInterval = setInterval(reload, 3000);
+            } catch (error) {
+                if (error.name === 'TimeoutError' && error.message.includes('Waiting for selector')) {
+                    console.log('Timeout waiting for selector. Retrying reload...');
+                    return reload();
+                } else {
+                    console.error(`Unexpected error: ${error.message}`);
+                }
             }
         }
     }
 
-    firstInterval = setInterval(reload, 4000);
+    firstInterval = setInterval(reload, 3000);
 
 })();
 
