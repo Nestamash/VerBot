@@ -7,7 +7,7 @@ puppeteer.use(StealthPlugin());
 puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
 const FILE_PATH = 'clickedElements.json'; // File path to store clicked elements
-const verbitEmail = 'Zacserle4@gmail.com';
+const verbitEmail = 'musyokamarvin84@gmail.com';
 let clickedElements = new Set();
 let firstInterval;
 
@@ -62,7 +62,21 @@ let firstInterval;
 
     async function reload() {
         try {
+
+            // Check if the page is available
+            if (!page) {
+                console.log('Page is not available. Exiting reload.');
+                clearInterval(firstInterval);
+                return;
+            }
+
             console.log('Reload function called');
+
+            // Check if the page is still open
+            if (page.isClosed()) {
+                console.log('Page is closed. Exiting reload.');
+                return;
+            }
 
             fileHandle = await fs.open(FILE_PATH, 'r');
             const data = await fileHandle.readFile('utf8');
@@ -102,13 +116,10 @@ let firstInterval;
                                 const href = await taskId.evaluate(el => el.getAttribute('href'));
 
                                 if (!clickedElements.has(href)) {
+
                                     clickedElements.add(href);
+
                                     await taskId.click({ button: 'middle' });
-
-                                    // Adding a check for element existence after clicking
-                                    // await page.waitForSelector(selector1, { timeout: 5000 });
-
-                                    // await page.waitForTimeout(5000);
 
                                     await fs.writeFile(FILE_PATH, JSON.stringify([...clickedElements], null, 2), 'utf8');
                                 }
@@ -136,18 +147,33 @@ let firstInterval;
                     const verbitLogo = await page.waitForSelector('header > div.logo > a > img', { timeout: 30000 });
                     clearInterval(firstInterval);
                     console.log("Reloading in 30 sec...");
+                
+                    // Wait for 30 seconds before clicking
                     await page.waitForTimeout(30000);
-                    verbitLogo.click();
-                    //  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
-                    // await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+                
+                    // Check if the element is still attached to the DOM
+                    const isVerbitLogoAttached = await verbitLogo.evaluate(el => el && el.isConnected);
+                
+                    if (isVerbitLogoAttached) {
+                        verbitLogo.click();
+                
+                        // Wait for navigation to complete
+                        await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+                
+                        firstInterval = setInterval(reload, 4000);
+                    } else {
+                        console.log('verbitLogo element is detached. Retrying reload...');
+                        return reload();
+                    }
+                
 
-                     firstInterval = setInterval(reload, 4000);
                 } catch (error) {
                     if (error.name === 'TimeoutError' && error.message.includes('Waiting for selector')) {
                         console.log('Timeout waiting for selector. Retrying reload...');
                         return reload();
                     } else {
                         console.error(`Unexpected error: ${error.message}`);
+                        firstInterval = setInterval(reload, 4000);
                     }
                 }
             }
